@@ -7,10 +7,14 @@ import MovieDetailPage from './pages/MovieDetailPage';
 import MyBookingsPage from './pages/MyBookingsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
+import ChatWidget from './components/ChatWidget';
+import { useAppSelector } from './store/store';
 
 import AuthInitializer from './components/AuthInitializer';
 
 function App() {
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+
   return (
     <AuthInitializer>
       <Navbar />
@@ -40,6 +44,9 @@ function App() {
 
         <Route path="*" element={<Navigate to="/movies" replace />} />
       </Routes>
+
+      {/* Chat Widget - only show when authenticated */}
+      {isAuthenticated && <ChatWidget />}
     </AuthInitializer>
   );
 }

@@ -14,6 +14,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Movie> Movies => Set<Movie>();
     public DbSet<Showtime> Showtimes => Set<Showtime>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -65,6 +66,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(b => b.User)
                 .WithMany()
                 .HasForeignKey(b => b.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ChatMessage>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Message).IsRequired();
+            entity.Property(c => c.Response).IsRequired();
+            entity.HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

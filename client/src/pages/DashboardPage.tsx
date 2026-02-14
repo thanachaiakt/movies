@@ -9,8 +9,8 @@ export default function DashboardPage() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const [logoutApi, { isLoading }] = useLogoutMutation();
-
-    const handleLogout = async () => {
+    
+    async function handleLogout() {
         try {
             await logoutApi().unwrap();
         } catch {
@@ -19,7 +19,7 @@ export default function DashboardPage() {
             dispatch(logout());
             navigate('/login');
         }
-    };
+    }
 
     return (
         <div className="min-h-screen relative overflow-hidden">

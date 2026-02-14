@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using server.DTOs;
 using server.Services;
 
@@ -18,6 +19,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
         try
@@ -33,6 +35,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
         try
@@ -48,17 +51,17 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> RefreshToken()
     {
-        var accessToken = Request.Cookies["access_token"];
         var refreshToken = Request.Cookies["refresh_token"];
 
-        if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(refreshToken))
-            return Unauthorized(new { error = "Missing authentication cookies." });
+        if (string.IsNullOrEmpty(refreshToken))
+            return Unauthorized(new { error = "Missing refresh token cookie." });
 
         try
         {
-            var result = await _authService.RefreshTokenAsync(accessToken, refreshToken);
+            var result = await _authService.RefreshTokenAsync(refreshToken);
             SetTokenCookies(result);
             return Ok(new AuthResponseDto { Email = result.Email, FullName = result.FullName });
         }
@@ -110,31 +113,36 @@ public class AuthController : ControllerBase
 
     private void SetTokenCookies(AuthTokenResult result)
     {
+        var isProduction = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production";
+        
+        // Access token cookie expires with JWT for security
         Response.Cookies.Append("access_token", result.AccessToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = isProduction, // Only require HTTPS in production
             SameSite = SameSiteMode.Strict,
             Path = "/api",
-            MaxAge = TimeSpan.FromMinutes(result.RefreshTokenExpirationMinutes)
+            MaxAge = TimeSpan.FromMinutes(result.AccessTokenExpirationMinutes)
         });
 
         Response.Cookies.Append("refresh_token", result.RefreshToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = isProduction,
             SameSite = SameSiteMode.Strict,
-            Path = "/api/auth",
+            Path = "/api",
             MaxAge = TimeSpan.FromMinutes(result.RefreshTokenExpirationMinutes)
         });
     }
 
     private void ClearTokenCookies()
     {
+        var isProduction = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production";
+        
         Response.Cookies.Delete("access_token", new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = isProduction,
             SameSite = SameSiteMode.Strict,
             Path = "/api"
         });
@@ -142,9 +150,9 @@ public class AuthController : ControllerBase
         Response.Cookies.Delete("refresh_token", new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = isProduction,
             SameSite = SameSiteMode.Strict,
-            Path = "/api/auth"
+            Path = "/api"
         });
     }
 }

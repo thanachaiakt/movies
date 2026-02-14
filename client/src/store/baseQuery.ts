@@ -6,6 +6,7 @@ import { logout } from './authSlice';
 const mutex = new Mutex();
 const baseQuery = fetchBaseQuery({
     baseUrl: '/api',
+    credentials: 'include',
     prepareHeaders: (headers) => {
         // Since we are using httpOnly cookies, we don't need to manually attach tokens
         return headers;
@@ -34,7 +35,11 @@ export const baseQueryWithReauth: BaseQueryFn<
                 // The refresh endpoint is at /api/auth/refresh.
                 // So we should call '/auth/refresh' here.
 
-                const refreshResult = await baseQuery('/auth/refresh', api, extraOptions);
+                const refreshResult = await baseQuery(
+                    { url: '/auth/refresh', method: 'POST' },
+                    api,
+                    extraOptions
+                );
 
                 if (refreshResult.data) {
                     // Retry the initial query
