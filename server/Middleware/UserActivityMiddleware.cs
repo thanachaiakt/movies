@@ -7,14 +7,16 @@ public class UserActivityMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<UserActivityMiddleware> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public UserActivityMiddleware(RequestDelegate next, ILogger<UserActivityMiddleware> logger)
+    public UserActivityMiddleware(RequestDelegate next, ILogger<UserActivityMiddleware> logger, IServiceScopeFactory scopeFactory)
     {
         _next = next;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
-    public async Task InvokeAsync(HttpContext context, IAuthService authService)
+    public async Task InvokeAsync(HttpContext context)
     {
         // Process the request first
         await _next(context);
@@ -31,8 +33,11 @@ public class UserActivityMiddleware
                 try
                 {
                     // Record activity asynchronously (fire and forget)
+                    // Create a new scope to avoid using disposed DbContext
                     var activityTask = Task.Run(async () =>
                     {
+                        using var scope = _scopeFactory.CreateScope();
+                        var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
                         await authService.RecordUserActivityAsync(userId).ConfigureAwait(false);
                     });
 
